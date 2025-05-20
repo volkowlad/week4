@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"sync"
 	"time"
+	"week4/internal/myerr"
 )
 
 const (
@@ -44,8 +45,7 @@ func (r *repository) CreateTask(ctx context.Context, task TaskCreate) (uuid.UUID
 		return uuid.Nil, errors.Wrap(ctx.Err(), "failed to insert task")
 	default:
 		if task.Title == "" {
-			err := errors.New("title is required")
-			return uuid.Nil, errors.Wrap(err, "failed to insert task")
+			return uuid.Nil, errors.Wrap(myerr.ErrTitle, "failed to insert task")
 		}
 
 		newTask := &Task{
@@ -70,14 +70,12 @@ func (r *repository) GetTask(ctx context.Context, id uuid.UUID) (Task, error) {
 	default:
 		value, ok := r.Task.Load(id)
 		if !ok {
-			err := errors.New("task not found")
-			return Task{}, errors.Wrap(err, "failed to get task")
+			return Task{}, errors.Wrap(myerr.ErrTaskNotFound, "failed to get task")
 		}
 
 		task, ok := value.(*Task)
 		if !ok {
-			err := errors.New("invalid task type")
-			return Task{}, errors.Wrap(err, "failed to get task")
+			return Task{}, errors.Wrap(myerr.ErrInvalidTaskType, "failed to get task")
 		}
 
 		return *task, nil
@@ -106,8 +104,7 @@ func (r *repository) GetAllTasks(ctx context.Context) ([]Task, error) {
 		})
 
 		if isEmpty {
-			err := errors.New("task not found")
-			return nil, errors.Wrap(err, "failed to get all tasks")
+			return nil, errors.Wrap(myerr.ErrTaskNotFound, "failed to get all tasks")
 		}
 
 		return tasks, nil
@@ -124,8 +121,7 @@ func (r *repository) DeleteTask(ctx context.Context, id uuid.UUID) error {
 			return nil
 		}
 
-		err := errors.New("task not found")
-		return errors.Wrap(err, "failed to delete task")
+		return errors.Wrap(myerr.ErrTaskNotFound, "failed to delete task")
 	}
 }
 
@@ -136,14 +132,12 @@ func (r *repository) UpdateTask(ctx context.Context, task UpdateTask, id uuid.UU
 	default:
 		value, ok := r.Task.Load(id)
 		if !ok {
-			err := errors.New("task not found")
-			return Task{}, errors.Wrap(err, "failed to update task")
+			return Task{}, errors.Wrap(myerr.ErrTaskNotFound, "failed to update task")
 		}
 
 		newTask, ok := value.(*Task)
 		if !ok {
-			err := errors.New("invalid task type")
-			return Task{}, errors.Wrap(err, "failed to update task")
+			return Task{}, errors.Wrap(myerr.ErrInvalidTaskType, "failed to update task")
 		}
 
 		if task.Title != "" {
