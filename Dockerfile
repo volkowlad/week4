@@ -4,6 +4,6 @@ ENV GOPATH=/
 COPY ./ ./
 
 RUN go mod download
-RUN go build -o post-app ./app/main.go
+RUN go build -o tasks-app ./cmd/main.go
 
-ENTRYPOINT ["./post-app"]
+ENTRYPOINT ["./tasks-app"]
