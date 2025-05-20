@@ -76,8 +76,8 @@ func (s *service) GetTask(ctx *fiber.Ctx) error {
 		return dto.BadResponseError(ctx, dto.FieldBadFormat, "Invalid id parameter")
 	}
 
-	var task TaskResponse
-	task.Task, err = s.repos.GetTask(ctx.Context(), id)
+	var task repos.Task
+	task, err = s.repos.GetTask(ctx.Context(), id)
 	if err != nil {
 		s.log.Error("Failed to get task", zap.Error(err))
 		if err.Error() == "task not found" {

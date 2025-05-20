@@ -15,8 +15,7 @@ const (
 )
 
 type repository struct {
-	mu   sync.RWMutex
-	Task map[uuid.UUID]*Task
+	Task sync.Map
 }
 
 type Repository interface {
@@ -28,9 +27,7 @@ type Repository interface {
 }
 
 func NewRepository() Repository {
-	return &repository{
-		Task: make(map[uuid.UUID]*Task),
-	}
+	return &repository{}
 }
 
 func checkStatus(status string) string {
@@ -42,9 +39,6 @@ func checkStatus(status string) string {
 }
 
 func (r *repository) CreateTask(ctx context.Context, task TaskCreate) (uuid.UUID, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	select {
 	case <-ctx.Done():
 		return uuid.Nil, errors.Wrap(ctx.Err(), "failed to insert task")
@@ -63,24 +57,26 @@ func (r *repository) CreateTask(ctx context.Context, task TaskCreate) (uuid.UUID
 			UpdatedAt:   time.Now(),
 		}
 
-		r.Task[newTask.Id] = newTask
+		r.Task.Store(newTask.Id, newTask)
 
 		return newTask.Id, nil
 	}
 }
 
 func (r *repository) GetTask(ctx context.Context, id uuid.UUID) (Task, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	select {
 	case <-ctx.Done():
 		return Task{}, errors.Wrap(ctx.Err(), "failed to get task")
 	default:
-		task, ok := r.Task[id]
-
+		value, ok := r.Task.Load(id)
 		if !ok {
 			err := errors.New("task not found")
+			return Task{}, errors.Wrap(err, "failed to get task")
+		}
+
+		task, ok := value.(*Task)
+		if !ok {
+			err := errors.New("invalid task type")
 			return Task{}, errors.Wrap(err, "failed to get task")
 		}
 
@@ -89,22 +85,29 @@ func (r *repository) GetTask(ctx context.Context, id uuid.UUID) (Task, error) {
 }
 
 func (r *repository) GetAllTasks(ctx context.Context) ([]Task, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	var tasks []Task
-
 	select {
 	case <-ctx.Done():
 		return []Task{}, errors.Wrap(ctx.Err(), "failed to get all tasks")
 	default:
-		if len(r.Task) == 0 {
-			err := errors.New("task not found")
-			return []Task{}, errors.Wrap(err, "failed to get all tasks")
-		}
+		var tasks []Task
 
-		for _, task := range r.Task {
+		// Используем Range для итерации по всем элементам в sync.Map
+		isEmpty := true
+		r.Task.Range(func(key, value interface{}) bool {
+			isEmpty = false
+
+			task, ok := value.(*Task)
+			if !ok {
+				return false
+			}
 			tasks = append(tasks, *task)
+
+			return true
+		})
+
+		if isEmpty {
+			err := errors.New("task not found")
+			return nil, errors.Wrap(err, "failed to get all tasks")
 		}
 
 		return tasks, nil
@@ -112,15 +115,12 @@ func (r *repository) GetAllTasks(ctx context.Context) ([]Task, error) {
 }
 
 func (r *repository) DeleteTask(ctx context.Context, id uuid.UUID) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	select {
 	case <-ctx.Done():
 		return errors.Wrap(ctx.Err(), "failed to delete task")
 	default:
-		if _, ok := r.Task[id]; ok {
-			delete(r.Task, id)
+		if _, ok := r.Task.Load(id); ok {
+			r.Task.Delete(id)
 			return nil
 		}
 
@@ -130,16 +130,19 @@ func (r *repository) DeleteTask(ctx context.Context, id uuid.UUID) error {
 }
 
 func (r *repository) UpdateTask(ctx context.Context, task UpdateTask, id uuid.UUID) (Task, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	select {
 	case <-ctx.Done():
 		return Task{}, errors.Wrap(ctx.Err(), "failed to update task")
 	default:
-		newTask, ok := r.Task[id]
+		value, ok := r.Task.Load(id)
 		if !ok {
 			err := errors.New("task not found")
+			return Task{}, errors.Wrap(err, "failed to update task")
+		}
+
+		newTask, ok := value.(*Task)
+		if !ok {
+			err := errors.New("invalid task type")
 			return Task{}, errors.Wrap(err, "failed to update task")
 		}
 
@@ -155,7 +158,7 @@ func (r *repository) UpdateTask(ctx context.Context, task UpdateTask, id uuid.UU
 		newTask.Status = status
 		newTask.UpdatedAt = time.Now()
 
-		r.Task[id] = newTask
+		r.Task.Store(newTask.Id, newTask)
 
 		return *newTask, nil
 	}
