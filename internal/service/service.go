@@ -111,6 +111,18 @@ func (s *service) GetTask(ctx *fiber.Ctx) error {
 }
 
 func (s *service) GetAllTasks(ctx *fiber.Ctx) error {
+	page := ctx.QueryInt("page", 1)
+
+	if page < 1 {
+		page = 1
+	}
+
+	limit := ctx.QueryInt("limit", 10)
+
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+
 	var tasks AllTasksResponse
 	var err error
 
@@ -124,6 +136,18 @@ func (s *service) GetAllTasks(ctx *fiber.Ctx) error {
 
 		return dto.InternalServerError(ctx)
 	}
+
+	start := (page - 1) * limit
+	if start > len(tasks.Tasks) {
+		return dto.NotFound(ctx)
+	}
+
+	end := start + limit
+	if end > len(tasks.Tasks) {
+		end = len(tasks.Tasks)
+	}
+
+	tasks.Tasks = tasks.Tasks[start:end]
 
 	response := dto.Response{
 		Status: "success",
