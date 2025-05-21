@@ -9,7 +9,7 @@ const (
 	FieldIncorrect     = "FIELD_INCORRECT"
 	ServiceUnavailable = "SERVICE_UNAVAILABLE"
 	InternalError      = "Service is currently unavailable. Please try again later."
-	NoContent          = "Not Data"
+	NoContent          = "No Data"
 	ContentError       = "Service is available, but no data with this ID"
 )
 
@@ -50,6 +50,16 @@ func NotFound(ctx *fiber.Ctx) error {
 		Error: &Error{
 			Code: NoContent,
 			Desc: ContentError,
+		},
+	})
+}
+
+func WrongType(ctx *fiber.Ctx) error {
+	return ctx.Status(fiber.StatusUnsupportedMediaType).JSON(Response{
+		Status: "error",
+		Error: &Error{
+			Code: FieldBadFormat,
+			Desc: FieldBadFormat,
 		},
 	})
 }

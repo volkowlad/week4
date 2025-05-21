@@ -2,10 +2,14 @@ package service
 
 import (
 	"encoding/json"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
+
 	"week4/internal/dto"
+	"week4/internal/myerr"
 	"week4/internal/repos"
 	"week4/pkg/validator"
 )
@@ -57,6 +61,11 @@ func (s *service) CreateTask(ctx *fiber.Ctx) error {
 	taskID, err := s.repos.CreateTask(ctx.Context(), task)
 	if err != nil {
 		s.log.Error("Failed to insert task", zap.Error(err))
+
+		if errors.Is(err, myerr.ErrTitle) {
+			return dto.BadResponseError(ctx, dto.FieldBadFormat, "Invalid request body")
+		}
+
 		return dto.InternalServerError(ctx)
 	}
 
@@ -73,16 +82,23 @@ func (s *service) GetTask(ctx *fiber.Ctx) error {
 	id, err := uuid.Parse(ctx.Params("id"))
 	if err != nil {
 		s.log.Error("Invalid id parameter", zap.Error(err))
+
 		return dto.BadResponseError(ctx, dto.FieldBadFormat, "Invalid id parameter")
 	}
 
-	var task TaskResponse
-	task.Task, err = s.repos.GetTask(ctx.Context(), id)
+	var task repos.Task
+	task, err = s.repos.GetTask(ctx.Context(), id)
 	if err != nil {
 		s.log.Error("Failed to get task", zap.Error(err))
-		if err.Error() == "task not found" {
+
+		if errors.Is(err, myerr.ErrTaskNotFound) {
 			return dto.NotFound(ctx)
 		}
+
+		if errors.Is(err, myerr.ErrInvalidTaskType) {
+			return dto.WrongType(ctx)
+		}
+
 		return dto.InternalServerError(ctx)
 	}
 
@@ -95,17 +111,43 @@ func (s *service) GetTask(ctx *fiber.Ctx) error {
 }
 
 func (s *service) GetAllTasks(ctx *fiber.Ctx) error {
+	page := ctx.QueryInt("page", 1)
+
+	if page < 1 {
+		page = 1
+	}
+
+	limit := ctx.QueryInt("limit", 10)
+
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+
 	var tasks AllTasksResponse
 	var err error
 
 	tasks.Tasks, err = s.repos.GetAllTasks(ctx.Context())
 	if err != nil {
 		s.log.Error("Failed to get all tasks", zap.Error(err))
-		if err.Error() == "no tasks found" {
+
+		if errors.Is(err, myerr.ErrTaskNotFound) {
 			return dto.NotFound(ctx)
 		}
+
 		return dto.InternalServerError(ctx)
 	}
+
+	start := (page - 1) * limit
+	if start > len(tasks.Tasks) {
+		return dto.NotFound(ctx)
+	}
+
+	end := start + limit
+	if end > len(tasks.Tasks) {
+		end = len(tasks.Tasks)
+	}
+
+	tasks.Tasks = tasks.Tasks[start:end]
 
 	response := dto.Response{
 		Status: "success",
@@ -125,6 +167,11 @@ func (s *service) DeleteTask(ctx *fiber.Ctx) error {
 	err = s.repos.DeleteTask(ctx.Context(), id)
 	if err != nil {
 		s.log.Error("Failed to delete task", zap.Error(err))
+
+		if errors.Is(err, myerr.ErrTaskNotFound) {
+			return dto.NotFound(ctx)
+		}
+
 		return dto.InternalServerError(ctx)
 	}
 
@@ -173,9 +220,15 @@ func (s *service) UpdateTask(ctx *fiber.Ctx) error {
 	newTask.Task, err = s.repos.UpdateTask(ctx.Context(), task, id)
 	if err != nil {
 		s.log.Error("Failed to update task", zap.Error(err))
-		if err.Error() == "task not found" {
+
+		if errors.Is(err, myerr.ErrTaskNotFound) {
 			return dto.NotFound(ctx)
 		}
+
+		if errors.Is(err, myerr.ErrTaskNotFound) {
+			return dto.WrongType(ctx)
+		}
+
 		return dto.InternalServerError(ctx)
 	}
 

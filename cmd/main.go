@@ -1,13 +1,17 @@
 package main
 
 import (
-	"github.com/joho/godotenv"
-	"github.com/kelseyhightower/envconfig"
-	"github.com/pkg/errors"
+	"context"
+	"flag"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/joho/godotenv"
+	"github.com/kelseyhightower/envconfig"
+	"github.com/pkg/errors"
+
 	"week4/internal/api"
 	"week4/internal/config"
 	custumLog "week4/internal/logger"
@@ -32,11 +36,32 @@ func main() {
 		log.Fatal(errors.Wrap(err, "error initializing logger"))
 	}
 
-	// иницализация хранилища данных
-	repository := repos.NewRepository()
+	storageType := flag.String("storage", "memory", "type of storage to use: 'memory' or 'postgres'")
+	flag.Parse()
 
-	// Создание сервиса с бизнес-логикой
-	serviceInstance := service.NewService(repository, logger)
+	ctx := context.Background()
+
+	var serviceInstance service.Service
+
+	switch *storageType {
+	case "postgres":
+		repository, err := repos.NewPostgres(ctx, cfg.Postgres)
+		if err != nil {
+			logger.Fatal(errors.Wrap(err, "error initializing postgres"))
+		}
+
+		serviceInstance = service.NewService(repository, logger)
+
+		logger.Infof("db - %v", *storageType)
+	case "memory":
+		repository := repos.NewMemory()
+
+		serviceInstance = service.NewService(repository, logger)
+
+		logger.Infof("db - %v", *storageType)
+	default:
+		logger.Fatal(errors.Wrap(err, "unknown storage type"))
+	}
 
 	// Инициализация API
 	app := api.NewRouters(&api.Routers{Service: serviceInstance}, cfg.Rest.Token)
@@ -45,7 +70,7 @@ func main() {
 	go func() {
 		logger.Infof("Starting server on %s", cfg.Rest.ListenAddress)
 		if err := app.Listen(":" + cfg.Rest.ListenAddress); err != nil {
-			log.Fatal(errors.Wrap(err, "failed to start server"))
+			logger.Fatal(errors.Wrap(err, "failed to start server"))
 		}
 	}()
 

@@ -1,0 +1,44 @@
+version: "3.9"
+
+services:
+  tasks:
+    networks:
+      - new
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    command: ["--storage=${STORAGE}"]
+    ports:
+      - "8080:8080"
+    depends_on:
+      - migrate
+
+  db:
+    restart: always
+    image: postgres:latest
+    networks:
+      - new
+    volumes:
+      - ./.database/postgres/data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: pg_isready --username ${DB_USER} --dbname ${DB_NAME}
+      interval: 1s
+      retries: 3
+      timeout: 5s
+
+  migrate:
+    image: migrate/migrate:latest
+    volumes:
+      - ./migrations:/migrations
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - new
+    command: '-path /migrations/ -database "postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?sslmode=${DB_SSL_MODE}" up'
+
+networks:
+  new:
+    driver: bridge

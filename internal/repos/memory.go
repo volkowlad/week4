@@ -2,10 +2,13 @@ package repos
 
 import (
 	"context"
-	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/pkg/errors"
+
+	"week4/internal/myerr"
 )
 
 const (
@@ -14,23 +17,12 @@ const (
 	statusDone     = "done"
 )
 
-type repository struct {
-	mu   sync.RWMutex
-	Task map[uuid.UUID]*Task
+type repMemory struct {
+	Task sync.Map
 }
 
-type Repository interface {
-	CreateTask(ctx context.Context, task TaskCreate) (uuid.UUID, error) // Создание задачи
-	GetTask(ctx context.Context, id uuid.UUID) (Task, error)
-	GetAllTasks(ctx context.Context) ([]Task, error)
-	DeleteTask(ctx context.Context, id uuid.UUID) error
-	UpdateTask(ctx context.Context, task UpdateTask, id uuid.UUID) (Task, error)
-}
-
-func NewRepository() Repository {
-	return &repository{
-		Task: make(map[uuid.UUID]*Task),
-	}
+func NewMemory() Repository {
+	return &repMemory{}
 }
 
 func checkStatus(status string) string {
@@ -41,17 +33,13 @@ func checkStatus(status string) string {
 	return statusNew
 }
 
-func (r *repository) CreateTask(ctx context.Context, task TaskCreate) (uuid.UUID, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
+func (r *repMemory) CreateTask(ctx context.Context, task TaskCreate) (uuid.UUID, error) {
 	select {
 	case <-ctx.Done():
 		return uuid.Nil, errors.Wrap(ctx.Err(), "failed to insert task")
 	default:
 		if task.Title == "" {
-			err := errors.New("title is required")
-			return uuid.Nil, errors.Wrap(err, "failed to insert task")
+			return uuid.Nil, errors.Wrap(myerr.ErrTitle, "failed to insert task")
 		}
 
 		newTask := &Task{
@@ -63,84 +51,87 @@ func (r *repository) CreateTask(ctx context.Context, task TaskCreate) (uuid.UUID
 			UpdatedAt:   time.Now(),
 		}
 
-		r.Task[newTask.Id] = newTask
+		r.Task.Store(newTask.Id, newTask)
 
 		return newTask.Id, nil
 	}
 }
 
-func (r *repository) GetTask(ctx context.Context, id uuid.UUID) (Task, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
+func (r *repMemory) GetTask(ctx context.Context, id uuid.UUID) (Task, error) {
 	select {
 	case <-ctx.Done():
 		return Task{}, errors.Wrap(ctx.Err(), "failed to get task")
 	default:
-		task, ok := r.Task[id]
-
+		value, ok := r.Task.Load(id)
 		if !ok {
-			err := errors.New("task not found")
-			return Task{}, errors.Wrap(err, "failed to get task")
+			return Task{}, errors.Wrap(myerr.ErrTaskNotFound, "failed to get task")
+		}
+
+		task, ok := value.(*Task)
+		if !ok {
+			return Task{}, errors.Wrap(myerr.ErrInvalidTaskType, "failed to get task")
 		}
 
 		return *task, nil
 	}
 }
 
-func (r *repository) GetAllTasks(ctx context.Context) ([]Task, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	var tasks []Task
-
+func (r *repMemory) GetAllTasks(ctx context.Context) ([]Task, error) {
 	select {
 	case <-ctx.Done():
 		return []Task{}, errors.Wrap(ctx.Err(), "failed to get all tasks")
 	default:
-		if len(r.Task) == 0 {
-			err := errors.New("task not found")
-			return []Task{}, errors.Wrap(err, "failed to get all tasks")
-		}
+		var tasks []Task
 
-		for _, task := range r.Task {
+		// Используем Range для итерации по всем элементам в sync.Map
+		isEmpty := true
+		r.Task.Range(func(key, value interface{}) bool {
+			isEmpty = false
+
+			task, ok := value.(*Task)
+			if !ok {
+				return false
+			}
 			tasks = append(tasks, *task)
+
+			return true
+		})
+
+		if isEmpty {
+			return nil, errors.Wrap(myerr.ErrTaskNotFound, "failed to get all tasks")
 		}
 
 		return tasks, nil
 	}
 }
 
-func (r *repository) DeleteTask(ctx context.Context, id uuid.UUID) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
+func (r *repMemory) DeleteTask(ctx context.Context, id uuid.UUID) error {
 	select {
 	case <-ctx.Done():
 		return errors.Wrap(ctx.Err(), "failed to delete task")
 	default:
-		if _, ok := r.Task[id]; ok {
-			delete(r.Task, id)
+		if _, ok := r.Task.Load(id); ok {
+			r.Task.Delete(id)
 			return nil
 		}
 
-		err := errors.New("task not found")
-		return errors.Wrap(err, "failed to delete task")
+		return errors.Wrap(myerr.ErrTaskNotFound, "failed to delete task")
 	}
 }
 
-func (r *repository) UpdateTask(ctx context.Context, task UpdateTask, id uuid.UUID) (Task, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
+func (r *repMemory) UpdateTask(ctx context.Context, task UpdateTask, id uuid.UUID) (Task, error) {
 	select {
 	case <-ctx.Done():
 		return Task{}, errors.Wrap(ctx.Err(), "failed to update task")
 	default:
-		newTask, ok := r.Task[id]
+		value, ok := r.Task.Load(id)
 		if !ok {
-			err := errors.New("task not found")
-			return Task{}, errors.Wrap(err, "failed to update task")
+			return Task{}, errors.Wrap(myerr.ErrTaskNotFound, "failed to update task")
+		}
+
+		newTask, ok := value.(*Task)
+		if !ok {
+			return Task{}, errors.Wrap(myerr.ErrInvalidTaskType, "failed to update task")
 		}
 
 		if task.Title != "" {
@@ -155,7 +146,7 @@ func (r *repository) UpdateTask(ctx context.Context, task UpdateTask, id uuid.UU
 		newTask.Status = status
 		newTask.UpdatedAt = time.Now()
 
-		r.Task[id] = newTask
+		r.Task.Store(newTask.Id, newTask)
 
 		return *newTask, nil
 	}
