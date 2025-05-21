@@ -126,7 +126,7 @@ func (s *service) GetAllTasks(ctx *fiber.Ctx) error {
 	var tasks AllTasksResponse
 	var err error
 
-	tasks.Tasks, err = s.repos.GetAllTasks(ctx.Context())
+	tasks.Tasks, err = s.repos.GetAllTasks(ctx.Context(), page, limit)
 	if err != nil {
 		s.log.Error("Failed to get all tasks", zap.Error(err))
 
@@ -136,18 +136,6 @@ func (s *service) GetAllTasks(ctx *fiber.Ctx) error {
 
 		return dto.InternalServerError(ctx)
 	}
-
-	start := (page - 1) * limit
-	if start > len(tasks.Tasks) {
-		return dto.NotFound(ctx)
-	}
-
-	end := start + limit
-	if end > len(tasks.Tasks) {
-		end = len(tasks.Tasks)
-	}
-
-	tasks.Tasks = tasks.Tasks[start:end]
 
 	response := dto.Response{
 		Status: "success",

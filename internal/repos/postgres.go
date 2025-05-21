@@ -18,7 +18,7 @@ import (
 const (
 	insertTaskQuery  = `INSERT INTO tasks (title, description) VALUES ($1, $2) RETURNING id;`
 	selectTasksQuery = `SELECT id, title, description, status, created_at, updated_at FROM tasks WHERE id = $1;`
-	selectAllTasks   = `SELECT id, title, description, status, created_at, updated_at FROM tasks`
+	selectAllTasks   = `SELECT id, title, description, status, created_at, updated_at FROM tasks LIMIT $1 OFFSET $2;`
 	deleteTask       = `DELETE FROM tasks WHERE id = $1;`
 )
 
@@ -86,10 +86,12 @@ func (r *repPostgres) GetTask(ctx context.Context, id uuid.UUID) (Task, error) {
 	return task, nil
 }
 
-func (r *repPostgres) GetAllTasks(ctx context.Context) ([]Task, error) {
+func (r *repPostgres) GetAllTasks(ctx context.Context, page, limit int) ([]Task, error) {
 	var tasks []Task
 
-	rows, err := r.pool.Query(ctx, selectAllTasks)
+	offset := (page - 1) * limit
+
+	rows, err := r.pool.Query(ctx, selectAllTasks, limit, offset)
 	if err != nil {
 		return tasks, errors.Wrap(err, "failed to query tasks")
 	}

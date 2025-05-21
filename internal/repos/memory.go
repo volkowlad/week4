@@ -2,11 +2,10 @@ package repos
 
 import (
 	"context"
-	"sync"
-	"time"
-
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"sync"
+	"time"
 
 	"week4/internal/myerr"
 )
@@ -76,18 +75,14 @@ func (r *repMemory) GetTask(ctx context.Context, id uuid.UUID) (Task, error) {
 	}
 }
 
-func (r *repMemory) GetAllTasks(ctx context.Context) ([]Task, error) {
+func (r *repMemory) GetAllTasks(ctx context.Context, page, limit int) ([]Task, error) {
 	select {
 	case <-ctx.Done():
 		return []Task{}, errors.Wrap(ctx.Err(), "failed to get all tasks")
 	default:
 		var tasks []Task
 
-		// Используем Range для итерации по всем элементам в sync.Map
-		isEmpty := true
 		r.Task.Range(func(key, value interface{}) bool {
-			isEmpty = false
-
 			task, ok := value.(*Task)
 			if !ok {
 				return false
@@ -97,9 +92,21 @@ func (r *repMemory) GetAllTasks(ctx context.Context) ([]Task, error) {
 			return true
 		})
 
-		if isEmpty {
+		if len(tasks) < 0 {
 			return nil, errors.Wrap(myerr.ErrTaskNotFound, "failed to get all tasks")
 		}
+
+		start := (page - 1) * limit
+		if start > len(tasks) {
+			return []Task{}, errors.Wrap(myerr.ErrRange, "failed to get all tasks")
+		}
+
+		end := start + limit
+		if end > len(tasks) {
+			end = len(tasks)
+		}
+
+		tasks = tasks[start:end]
 
 		return tasks, nil
 	}
