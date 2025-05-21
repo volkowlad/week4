@@ -22,10 +22,8 @@ services:
       - ./.database/postgres/data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
-    environment:
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     healthcheck:
-      test: pg_isready --username "postgres" --dbname "postgres"
+      test: pg_isready --username ${DB_USER} --dbname ${DB_NAME}
       interval: 1s
       retries: 3
       timeout: 5s
@@ -39,7 +37,7 @@ services:
         condition: service_healthy
     networks:
       - new
-    command: '-path /migrations/ -database "postgres://postgres:${POSTGRES_PASSWORD}@db:5432/postgres?sslmode=disable" up'
+    command: '-path /migrations/ -database "postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?sslmode=${DB_SSL_MODE}" up'
 
 networks:
   new:

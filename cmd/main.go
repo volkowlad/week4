@@ -47,19 +47,22 @@ func main() {
 	case "postgres":
 		repository, err := repos.NewPostgres(ctx, cfg.Postgres)
 		if err != nil {
-			log.Fatal(errors.Wrap(err, "error initializing postgres"))
+			logger.Fatal(errors.Wrap(err, "error initializing postgres"))
 		}
 
 		serviceInstance = service.NewService(repository, logger)
 
+		logger.Infof("db - %v", *storageType)
 	case "memory":
 		repository := repos.NewMemory()
 
 		serviceInstance = service.NewService(repository, logger)
+
+		logger.Infof("db - %v", *storageType)
 	default:
-		log.Fatal(errors.Wrap(err, "unknown storage type"))
+		logger.Fatal(errors.Wrap(err, "unknown storage type"))
 	}
-	
+
 	// Инициализация API
 	app := api.NewRouters(&api.Routers{Service: serviceInstance}, cfg.Rest.Token)
 
@@ -67,7 +70,7 @@ func main() {
 	go func() {
 		logger.Infof("Starting server on %s", cfg.Rest.ListenAddress)
 		if err := app.Listen(":" + cfg.Rest.ListenAddress); err != nil {
-			log.Fatal(errors.Wrap(err, "failed to start server"))
+			logger.Fatal(errors.Wrap(err, "failed to start server"))
 		}
 	}()
 
