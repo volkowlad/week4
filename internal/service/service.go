@@ -2,10 +2,12 @@ package service
 
 import (
 	"encoding/json"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+
 	"week4/internal/dto"
 	"week4/internal/myerr"
 	"week4/internal/repos"
@@ -199,7 +201,7 @@ func (s *service) UpdateTask(ctx *fiber.Ctx) error {
 			return dto.NotFound(ctx)
 		}
 
-		if errors.Is(err, myerr.ErrInvalidTaskType) {
+		if errors.Is(err, myerr.ErrTaskNotFound) {
 			return dto.WrongType(ctx)
 		}
 

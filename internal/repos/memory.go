@@ -2,10 +2,12 @@ package repos
 
 import (
 	"context"
-	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/pkg/errors"
+
 	"week4/internal/myerr"
 )
 
@@ -15,20 +17,12 @@ const (
 	statusDone     = "done"
 )
 
-type repository struct {
+type repMemory struct {
 	Task sync.Map
 }
 
-type Repository interface {
-	CreateTask(ctx context.Context, task TaskCreate) (uuid.UUID, error) // Создание задачи
-	GetTask(ctx context.Context, id uuid.UUID) (Task, error)
-	GetAllTasks(ctx context.Context) ([]Task, error)
-	DeleteTask(ctx context.Context, id uuid.UUID) error
-	UpdateTask(ctx context.Context, task UpdateTask, id uuid.UUID) (Task, error)
-}
-
-func NewRepository() Repository {
-	return &repository{}
+func NewMemory() Repository {
+	return &repMemory{}
 }
 
 func checkStatus(status string) string {
@@ -39,7 +33,7 @@ func checkStatus(status string) string {
 	return statusNew
 }
 
-func (r *repository) CreateTask(ctx context.Context, task TaskCreate) (uuid.UUID, error) {
+func (r *repMemory) CreateTask(ctx context.Context, task TaskCreate) (uuid.UUID, error) {
 	select {
 	case <-ctx.Done():
 		return uuid.Nil, errors.Wrap(ctx.Err(), "failed to insert task")
@@ -63,7 +57,7 @@ func (r *repository) CreateTask(ctx context.Context, task TaskCreate) (uuid.UUID
 	}
 }
 
-func (r *repository) GetTask(ctx context.Context, id uuid.UUID) (Task, error) {
+func (r *repMemory) GetTask(ctx context.Context, id uuid.UUID) (Task, error) {
 	select {
 	case <-ctx.Done():
 		return Task{}, errors.Wrap(ctx.Err(), "failed to get task")
@@ -82,7 +76,7 @@ func (r *repository) GetTask(ctx context.Context, id uuid.UUID) (Task, error) {
 	}
 }
 
-func (r *repository) GetAllTasks(ctx context.Context) ([]Task, error) {
+func (r *repMemory) GetAllTasks(ctx context.Context) ([]Task, error) {
 	select {
 	case <-ctx.Done():
 		return []Task{}, errors.Wrap(ctx.Err(), "failed to get all tasks")
@@ -111,7 +105,7 @@ func (r *repository) GetAllTasks(ctx context.Context) ([]Task, error) {
 	}
 }
 
-func (r *repository) DeleteTask(ctx context.Context, id uuid.UUID) error {
+func (r *repMemory) DeleteTask(ctx context.Context, id uuid.UUID) error {
 	select {
 	case <-ctx.Done():
 		return errors.Wrap(ctx.Err(), "failed to delete task")
@@ -125,7 +119,7 @@ func (r *repository) DeleteTask(ctx context.Context, id uuid.UUID) error {
 	}
 }
 
-func (r *repository) UpdateTask(ctx context.Context, task UpdateTask, id uuid.UUID) (Task, error) {
+func (r *repMemory) UpdateTask(ctx context.Context, task UpdateTask, id uuid.UUID) (Task, error) {
 	select {
 	case <-ctx.Done():
 		return Task{}, errors.Wrap(ctx.Err(), "failed to update task")

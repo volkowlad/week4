@@ -1,6 +1,6 @@
 package myerr
 
-import "errors"
+import "github.com/pkg/errors"
 
 var (
 	ErrTaskNotFound    = errors.New("task not found")
