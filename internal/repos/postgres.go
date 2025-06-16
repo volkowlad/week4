@@ -10,8 +10,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pkg/errors"
 
-	"week4/internal/config"
-	"week4/internal/myerr"
+	"github.com/volkowlad/week4/internal/config"
+	"github.com/volkowlad/week4/internal/myerr"
 )
 
 // SQL-запрос на вставку задачи

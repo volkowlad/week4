@@ -8,10 +8,10 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
-	"week4/internal/dto"
-	"week4/internal/myerr"
-	"week4/internal/repos"
-	"week4/pkg/validator"
+	"github.com/volkowlad/week4/internal/dto"
+	"github.com/volkowlad/week4/internal/myerr"
+	"github.com/volkowlad/week4/internal/repos"
+	"github.com/volkowlad/week4/pkg/validator"
 )
 
 // Слой бизнес-логики. Тут должна быть основная логика сервиса

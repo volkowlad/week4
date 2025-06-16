@@ -12,11 +12,11 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"github.com/pkg/errors"
 
-	"week4/internal/api"
-	"week4/internal/config"
-	custumLog "week4/internal/logger"
-	"week4/internal/repos"
-	"week4/internal/service"
+	"github.com/volkowlad/week4/internal/api"
+	"github.com/volkowlad/week4/internal/config"
+	custumLog "github.com/volkowlad/week4/internal/logger"
+	"github.com/volkowlad/week4/internal/repos"
+	"github.com/volkowlad/week4/internal/service"
 )
 
 func main() {
