@@ -1,7 +1,7 @@
 package service
 
 import (
-	"week4/internal/repos"
+	"github.com/volkowlad/week4/internal/repos"
 )
 
 // TaskRequest - структура, представляющая тело запроса

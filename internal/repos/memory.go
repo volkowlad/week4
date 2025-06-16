@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"week4/internal/myerr"
+	"github.com/volkowlad/week4/internal/myerr"
 )
 
 const (

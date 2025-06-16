@@ -4,8 +4,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 
-	"week4/internal/api/mw"
-	"week4/internal/service"
+	"github.com/volkowlad/week4/internal/api/mw"
+	"github.com/volkowlad/week4/internal/service"
 )
 
 type Routers struct {
