@@ -1,4 +1,4 @@
-module week4
+module github.com/volkowlad/week4
 
 go 1.24.0
 
