@@ -64,7 +64,7 @@ func (s *service) CreateTask(ctx *fiber.Ctx) error {
 		Description: req.Description,
 	}
 
-	taskID, err := s.repos.CreateTask(ctx.Context(), task)
+	err = s.repos.CreateTask(ctx.Context(), task)
 	if err != nil {
 		s.log.Error("Failed to insert task", zap.Error(err))
 
@@ -78,7 +78,7 @@ func (s *service) CreateTask(ctx *fiber.Ctx) error {
 	// Формирование ответа
 	response := dto.Response{
 		Status: "success",
-		Data:   map[string]uuid.UUID{"task_id": taskID},
+		Data:   map[string]uuid.UUID{"task_id": id},
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(response)
