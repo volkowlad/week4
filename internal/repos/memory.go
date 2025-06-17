@@ -32,17 +32,17 @@ func checkStatus(status string) string {
 	return statusNew
 }
 
-func (r *repMemory) CreateTask(ctx context.Context, task TaskCreate) (uuid.UUID, error) {
+func (r *repMemory) CreateTask(ctx context.Context, task TaskCreate) error {
 	select {
 	case <-ctx.Done():
-		return uuid.Nil, errors.Wrap(ctx.Err(), "failed to insert task")
+		return errors.Wrap(ctx.Err(), "failed to insert task")
 	default:
 		if task.Title == "" {
-			return uuid.Nil, errors.Wrap(myerr.ErrTitle, "failed to insert task")
+			return errors.Wrap(myerr.ErrTitle, "failed to insert task")
 		}
 
 		newTask := &Task{
-			Id:          uuid.New(),
+			Id:          task.Id,
 			Title:       task.Title,
 			Description: task.Description,
 			Status:      statusNew,
@@ -52,7 +52,7 @@ func (r *repMemory) CreateTask(ctx context.Context, task TaskCreate) (uuid.UUID,
 
 		r.Task.Store(newTask.Id, newTask)
 
-		return newTask.Id, nil
+		return nil
 	}
 }
 

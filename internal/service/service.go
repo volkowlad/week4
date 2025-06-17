@@ -52,8 +52,14 @@ func (s *service) CreateTask(ctx *fiber.Ctx) error {
 		return dto.BadResponseError(ctx, dto.FieldIncorrect, vErr.Error())
 	}
 
+	id, err := uuid.Parse(req.ID)
+	if err != nil {
+		return dto.BadResponseError(ctx, dto.FieldBadFormat, "Invalid id")
+	}
+
 	// Вставка задачи в БД через репозиторий
 	task := repos.TaskCreate{
+		Id:          id,
 		Title:       req.Title,
 		Description: req.Description,
 	}

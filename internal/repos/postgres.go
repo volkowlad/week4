@@ -16,7 +16,7 @@ import (
 
 // SQL-запрос на вставку задачи
 const (
-	insertTaskQuery  = `INSERT INTO tasks (title, description) VALUES ($1, $2) RETURNING id;`
+	insertTaskQuery  = `INSERT INTO tasks (id, title, description) VALUES ($1, $2, $3);`
 	selectTasksQuery = `SELECT id, title, description, status, created_at, updated_at FROM tasks WHERE id = $1;`
 	selectAllTasks   = `SELECT id, title, description, status, created_at, updated_at FROM tasks LIMIT $1 OFFSET $2;`
 	deleteTask       = `DELETE FROM tasks WHERE id = $1;`
@@ -62,13 +62,12 @@ func NewPostgres(ctx context.Context, cfg config.PostgreSQL) (Repository, error)
 }
 
 // CreateTask - вставка новой задачи в таблицу tasks
-func (r *repPostgres) CreateTask(ctx context.Context, task TaskCreate) (uuid.UUID, error) {
-	var id uuid.UUID
-	err := r.pool.QueryRow(ctx, insertTaskQuery, task.Title, task.Description).Scan(&id)
+func (r *repPostgres) CreateTask(ctx context.Context, task TaskCreate) error {
+	_, err := r.pool.Exec(ctx, insertTaskQuery, task.Id, task.Title, task.Description)
 	if err != nil {
-		return uuid.Nil, errors.Wrap(err, "failed to insert task")
+		return errors.Wrap(err, "failed to insert task")
 	}
-	return id, nil
+	return nil
 }
 
 func (r *repPostgres) GetTask(ctx context.Context, id uuid.UUID) (Task, error) {

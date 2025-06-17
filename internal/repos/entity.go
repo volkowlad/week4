@@ -16,8 +16,9 @@ type Task struct {
 }
 
 type TaskCreate struct {
-	Title       string `json:"title"`
-	Description string `json:"description"`
+	Id          uuid.UUID `json:"id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
 }
 
 type UpdateTask struct {

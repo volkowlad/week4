@@ -6,6 +6,7 @@ import (
 
 // TaskRequest - структура, представляющая тело запроса
 type TaskRequest struct {
+	ID          string `json:"id"`
 	Title       string `json:"title" validate:"required"`
 	Description string `json:"description"`
 }
